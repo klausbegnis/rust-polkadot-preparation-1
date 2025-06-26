@@ -12,7 +12,7 @@ This Pallet will tell you: how much balance each user has,
     to manipulate those balances if needed.
      Think for example if you want to mint new tokens which don't already exist.
 */
-
+#[derive(Debug)]
 pub struct Pallet {
     balances: BTreeMap<String, u128>,
 }
