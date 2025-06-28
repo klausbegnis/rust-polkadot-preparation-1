@@ -3,14 +3,27 @@ mod system;
 
 #[derive(Debug)]
 pub struct Runtime {
-    balances : balances::Pallet,
-    system : system::Pallet
+    balances : balances::Pallet<Self,>,
+    system : system::Pallet<Self,>,
 }
 
 impl Runtime {
     fn new() -> Self {
         Self { balances: balances::Pallet::new(), system: system::Pallet::new() }
     }
+}
+
+// implement the system config trait for Runtime
+impl system::Config for Runtime {
+    type AccountId = String;
+	type BlockNumber = u32;
+	type Nonce = u32;
+}
+
+// implement the balace config trait for Runtime
+impl balances::Config for Runtime {
+    type AccountId = String;
+	type Balance = u128;
 }
 
 fn main() {

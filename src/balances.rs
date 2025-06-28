@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use num::{CheckedAdd, CheckedSub, Zero};
 
 /*Pallets in Polkadot SDK:
 
@@ -12,42 +13,50 @@ This Pallet will tell you: how much balance each user has,
     to manipulate those balances if needed.
      Think for example if you want to mint new tokens which don't already exist.
 */
-#[derive(Debug)]
-pub struct Pallet {
-    balances: BTreeMap<String, u128>,
+
+// generic config trait for balances pallet
+pub trait Config {
+	type AccountId: Ord + Clone;
+	type Balance: Zero + CheckedSub + CheckedAdd + Copy;
 }
 
-impl Pallet {
+#[derive(Debug)]
+pub struct Pallet<T : Config> {
+    balances: BTreeMap<T::AccountId, T::Balance>,
+}
+
+impl <T : Config> Pallet<T>
+{
     pub fn new() -> Self {
         Self { balances: BTreeMap::new() }
     }
 
-    pub fn set_balance(&mut self, who: &String, amount: u128) {
+    pub fn set_balance(&mut self, who: &T::AccountId, amount: T::Balance) {
         self.balances.insert(who.clone(), amount);
     }
 
-    pub fn balance(&self, who: &String) -> u128 {
+    pub fn balance(&self, who: &T::AccountId) -> T::Balance {
         // .get returns Option<&u128> - &u128 a reference to a value
         // unwrap returns the reference the option -
         // * dereferences the reference and gets te actual value
-        *self.balances.get(who).unwrap_or(&0)
+        *self.balances.get(who).unwrap_or(&T::Balance::zero())
     }
 
-    pub fn account_exists(&self, who: &String) -> Option<&u128> {
+    pub fn account_exists(&self, who: &T::AccountId) -> Option<&T::Balance> {
         // check if account exists
         self.balances.get(who)
     }
 
     pub fn transfer_balance(
         &mut self,
-        origin : &String, // use references instead of borrowing
-        destination : &String, 
-        amount: u128
+        origin : &T::AccountId, // use references instead of borrowing
+        destination : &T::AccountId, 
+        amount: T::Balance
         // if sucessfull return nothing - otherwise a string literal with lifetime across from the entire program
     ) -> Result<(), &'static str> {
         // get current balances
-        let origin_balance:u128 = self.balance(origin);
-        let destination_balance:u128 = self.balance(destination);
+        let origin_balance:T::Balance = self.balance(origin);
+        let destination_balance:T::Balance = self.balance(destination);
         
         let destination_exists = self.account_exists(destination);
 
@@ -60,16 +69,16 @@ impl Pallet {
         }
 
         // check new balances or return error
-        let new_origin_balance: u128 = origin_balance
-            .checked_sub(amount)
+        let new_origin_balance: T::Balance = origin_balance
+            .checked_sub(&amount)
             .ok_or("Not enough funds.")?;
 
         // aditional check if origin exists
 
 
 
-        let new_destination_balance: u128 = destination_balance
-            .checked_add(amount)
+        let new_destination_balance: T::Balance = destination_balance
+            .checked_add(&amount)
             .ok_or("Reached limit amount on origin.")?;
         
         // set new balances if no errors
@@ -81,15 +90,23 @@ impl Pallet {
 
 #[cfg(test)]
 mod tests {
+    use crate::balances;
+
     // imports the definition of the Pallet from the top module
     use super::Pallet;
+
+    struct TestConfig;
+    impl balances::Config for TestConfig {
+        type AccountId = String;
+        type Balance = u128;
+    }
 
     #[test]
     fn init_balances() {
         
         let alice: String = "alice".to_string();
         
-        let mut balances = Pallet::new();
+        let mut balances: Pallet<TestConfig> = Pallet::new();
         assert_eq!(balances.balance(&alice), 0);
         balances.set_balance(&alice, 100);
         assert_eq!(balances.balance(&alice), 100);
@@ -100,7 +117,7 @@ mod tests {
     fn test_transter() {
 
         // init the pallet
-        let mut balances: Pallet = Pallet::new();
+        let mut balances: Pallet<TestConfig> = Pallet::new();
 
         let origin: String = String::from("Bob");
         let destination: String = String::from("Steve");
