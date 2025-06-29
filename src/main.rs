@@ -22,7 +22,6 @@ impl system::Config for Runtime {
 
 // implement the balace config trait for Runtime
 impl balances::Config for Runtime {
-    type AccountId = String;
 	type Balance = u128;
 }
 

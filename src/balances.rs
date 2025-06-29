@@ -15,8 +15,7 @@ This Pallet will tell you: how much balance each user has,
 */
 
 // generic config trait for balances pallet
-pub trait Config {
-	type AccountId: Ord + Clone;
+pub trait Config : crate::system::Config {
 	type Balance: Zero + CheckedSub + CheckedAdd + Copy;
 }
 
@@ -96,8 +95,12 @@ mod tests {
     use super::Pallet;
 
     struct TestConfig;
-    impl balances::Config for TestConfig {
+    impl crate::system::Config for TestConfig{
         type AccountId = String;
+        type BlockNumber = u32;
+        type Nonce = u32;
+    }
+    impl balances::Config for TestConfig {
         type Balance = u128;
     }
 
