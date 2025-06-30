@@ -48,16 +48,16 @@ impl <T : Config> Pallet<T>
 
     pub fn transfer_balance(
         &mut self,
-        origin : &T::AccountId, // use references instead of borrowing
-        destination : &T::AccountId, 
+        origin : T::AccountId, // use references instead of borrowing
+        destination : T::AccountId, 
         amount: T::Balance
         // if sucessfull return nothing - otherwise a string literal with lifetime across from the entire program
     ) -> crate::support::DispatchResult {
         // get current balances
-        let origin_balance:T::Balance = self.balance(origin);
-        let destination_balance:T::Balance = self.balance(destination);
+        let origin_balance:T::Balance = self.balance(&origin);
+        let destination_balance:T::Balance = self.balance(&destination);
         
-        let destination_exists = self.account_exists(destination);
+        let destination_exists = self.account_exists(&destination);
 
         // check if destination exists
         match destination_exists  {
@@ -81,11 +81,40 @@ impl <T : Config> Pallet<T>
             .ok_or("Reached limit amount on origin.")?;
         
         // set new balances if no errors
-        self.set_balance(origin, new_origin_balance);
-        self.set_balance(destination, new_destination_balance);
+        self.set_balance(&origin, new_origin_balance);
+        self.set_balance(&destination, new_destination_balance);
         Ok(())
     }
 }
+
+// A public enum which describes the calls we want to expose to the dispatcher.
+// We should expect that the caller of each call will be provided by the dispatcher,
+// and not included as a parameter of the call.
+pub enum Call<T: Config> {
+	Transfer { to : T::AccountId, amount : T::Balance }
+}
+
+/// Implementation of the dispatch logic, mapping from `BalancesCall` to the appropriate underlying
+/// function we want to execute.
+impl<T: Config> crate::support::Dispatch for Pallet<T> {
+	type Caller = T::AccountId;
+	type Call = Call<T>;
+
+	fn dispatch(
+		&mut self,
+		caller: Self::Caller,
+		call: Self::Call,
+	) -> crate::support::DispatchResult {
+		match call {
+            Call::Transfer { to, amount } => {
+                self.transfer_balance(caller, to, amount)?
+            }
+        }
+        Ok(())
+	}
+}
+
+
 
 #[cfg(test)]
 mod tests {

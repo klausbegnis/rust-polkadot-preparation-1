@@ -17,7 +17,7 @@ mod types {
 
 // not implemented yet
 pub enum RuntimeCall {
-    BalanceTransfer { to : types::AccountId, amount : types::Balance }
+    Balances(balances::Call<Runtime>),
 }
 
 // runtime definition
@@ -64,8 +64,8 @@ impl crate::support::Dispatch for Runtime {
 
     fn dispatch(&mut self, caller: Self::Caller, call: Self::Call) -> support::DispatchResult {
         match call {
-            RuntimeCall::BalanceTransfer { to, amount } => {
-                self.balances.transfer_balance(&caller, &to, amount)?;
+            RuntimeCall::Balances(call) => {
+                self.balances.dispatch(caller, call)?;
             }
         }
         Ok(())
@@ -91,22 +91,29 @@ fn main() {
     // users
     let alice : String = String::from("alice");
     let bob : String = String::from("bob");
-
+    let charlie : String = String::from("charlie");
     // set alice's balance to 60
     runtime.balances.set_balance(&alice, 60);
-    
     // create bob's account
     runtime.balances.set_balance(&bob, 0);
+    // create charlies's account
+    runtime.balances.set_balance(&charlie, 0);
 
     let new_block = crate::support::Block{ 
         header:crate::support::Header { block_number : 1}, 
         extrinsics: vec![
             support::Extrinsic {
                 caller: alice.clone(),
-                call : RuntimeCall::BalanceTransfer { to: bob.clone(), amount: 30 }
+                call : RuntimeCall::Balances(balances::Call::Transfer { to: bob.clone(), amount: 20 })
+            },
+            support::Extrinsic {
+                caller: alice.clone(),
+                call : RuntimeCall::Balances(balances::Call::Transfer { to: charlie.clone(), amount: 10 })
             }
         ]
     };
 
     let _res = runtime.execute_block(new_block).expect("invalid block");
+
+    println!("{:#?}", runtime);
 }
