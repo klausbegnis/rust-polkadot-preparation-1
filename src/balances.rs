@@ -52,7 +52,7 @@ impl <T : Config> Pallet<T>
         destination : &T::AccountId, 
         amount: T::Balance
         // if sucessfull return nothing - otherwise a string literal with lifetime across from the entire program
-    ) -> Result<(), &'static str> {
+    ) -> crate::support::DispatchResult {
         // get current balances
         let origin_balance:T::Balance = self.balance(origin);
         let destination_balance:T::Balance = self.balance(destination);

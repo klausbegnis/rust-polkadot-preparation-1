@@ -1,6 +1,26 @@
-mod balances;
-mod system; 
+use crate::support::{Dispatch};
 
+mod balances;
+mod system;
+mod support;
+
+// define the types for each generic
+mod types {
+    pub type AccountId = String;
+    pub type Balance = u128;
+    pub type BlockNumber = u32;
+    pub type Nonce = u32;
+    pub type Extrinsic = crate::support::Extrinsic<AccountId, crate::RuntimeCall>;
+    pub type Header = crate::support::Header<BlockNumber>;
+    pub type Block = crate::support::Block<Header, Extrinsic>;
+}
+
+// not implemented yet
+pub enum RuntimeCall {
+    BalanceTransfer { to : types::AccountId, amount : types::Balance }
+}
+
+// runtime definition
 #[derive(Debug)]
 pub struct Runtime {
     balances : balances::Pallet<Self,>,
@@ -11,18 +31,57 @@ impl Runtime {
     fn new() -> Self {
         Self { balances: balances::Pallet::new(), system: system::Pallet::new() }
     }
+
+    fn execute_block(&mut self, block: types::Block) -> support::DispatchResult {
+        // increment block number
+        self.system.inc_block_number();
+
+        //println!("block number {}", self.system.block_number());
+        //println!("new block number {}", block.header.block_number);
+
+        // check if block number from header matches system block number
+        if block.header.block_number != self.system.block_number() {
+            return Err("block number doesn't match");
+        }
+
+        for (i, support::Extrinsic {caller, call}) in block.extrinsics.into_iter().enumerate() {
+            self.system.inc_nonce(&caller);
+            let _result = self.dispatch(caller, call).map_err(|e| {
+                eprintln!(
+					"Extrinsic error \n\tBlock Number: {}\n\tExtrinsic Number: {}\n\tError: {}",
+					block.header.block_number, i, e
+				)
+            });
+        }
+        Ok(())
+        
+    }
+}
+
+impl crate::support::Dispatch for Runtime {
+    type Caller = <Runtime as system::Config>::AccountId;
+    type Call = RuntimeCall;
+
+    fn dispatch(&mut self, caller: Self::Caller, call: Self::Call) -> support::DispatchResult {
+        match call {
+            RuntimeCall::BalanceTransfer { to, amount } => {
+                self.balances.transfer_balance(&caller, &to, amount)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 // implement the system config trait for Runtime
 impl system::Config for Runtime {
-    type AccountId = String;
-	type BlockNumber = u32;
-	type Nonce = u32;
+    type AccountId = types::AccountId;
+	type BlockNumber = types::BlockNumber;
+	type Nonce = types::Nonce;
 }
 
 // implement the balace config trait for Runtime
 impl balances::Config for Runtime {
-	type Balance = u128;
+	type Balance = types::Balance;
 }
 
 fn main() {
@@ -32,27 +91,22 @@ fn main() {
     // users
     let alice : String = String::from("alice");
     let bob : String = String::from("bob");
-    let charlie : String = String::from("charlie");
-
-    // increment the block number
-    runtime.system.inc_block_numer();
-    assert_eq!(runtime.system.block_number(), 1);
 
     // set alice's balance to 60
     runtime.balances.set_balance(&alice, 60);
     
-    // increment nonce and do a transfer
-    // result with error since bob has no account so far
-    runtime.system.inc_nonce(&alice);
-    let _res= runtime.balances.transfer_balance(&alice, &bob, 30);
-    println!("account doesn't exist transaction failed: {}", _res.is_err_and(|err| err == "Account doesn't exist."));
-    
+    // create bob's account
+    runtime.balances.set_balance(&bob, 0);
 
-    runtime.balances.set_balance(&charlie, 0);
-    // increment nonce and do another transfer
-    runtime.system.inc_nonce(&alice);
-    let _res = runtime.balances.transfer_balance(&alice, &charlie, 20);
-    println!("transfer succesfull: {}", _res.is_ok());
+    let new_block = crate::support::Block{ 
+        header:crate::support::Header { block_number : 1}, 
+        extrinsics: vec![
+            support::Extrinsic {
+                caller: alice.clone(),
+                call : RuntimeCall::BalanceTransfer { to: bob.clone(), amount: 30 }
+            }
+        ]
+    };
 
-    println!("Runtime: {:#?}", runtime);
+    let _res = runtime.execute_block(new_block).expect("invalid block");
 }

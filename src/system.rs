@@ -23,7 +23,7 @@ impl<T: Config> Pallet<T>{
         self.block_number
     }
 
-    pub fn inc_block_numer(&mut self) {
+    pub fn inc_block_number(&mut self) {
         self.block_number += T::BlockNumber::one();
     }
 
@@ -53,7 +53,7 @@ mod test {
         let mut system_pallet : super::Pallet<TestConfig> = super::Pallet::new();
 
         // #Test 1: increment block number
-        system_pallet.inc_block_numer();
+        system_pallet.inc_block_number();
         assert_eq!(system_pallet.block_number(), 1);
 
         // #Test 2: increment nonce of 'alice'
