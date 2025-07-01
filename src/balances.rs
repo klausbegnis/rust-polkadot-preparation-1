@@ -156,7 +156,7 @@ mod tests {
 
         // TEST 1: Send money to inexisting account
         
-        let transfer_result = balances.transfer_balance(&origin, &destination, 1);
+        let transfer_result = balances.transfer_balance(origin.clone(), destination.clone(), 1);
         assert!(transfer_result.is_err());
         assert_eq!(transfer_result.unwrap_err(), "Account doesn't exist.");
 
@@ -165,7 +165,7 @@ mod tests {
         // create an account for steve
         balances.set_balance(&destination, 1);
 
-        let transfer_result = balances.transfer_balance(&origin, &destination, 1);
+        let transfer_result = balances.transfer_balance(origin.clone(), destination.clone(), 1);
         assert!(transfer_result.is_err());
         assert_eq!(transfer_result.unwrap_err(), "Not enough funds.");
         
@@ -174,7 +174,7 @@ mod tests {
         // set bob with some balance
         balances.set_balance(&origin, 1);
 
-        let transfer_result = balances.transfer_balance(&origin, &destination, 1);
+        let transfer_result = balances.transfer_balance(origin.clone(), destination.clone(), 1);
         assert!(transfer_result.is_ok());
         assert_eq!(balances.balance(&origin), 0);
         assert_eq!(balances.balance(&destination), 2);
@@ -183,7 +183,7 @@ mod tests {
 
         // set bob with a lot of tokens
         balances.set_balance(&origin, u128::MAX);
-        let transfer_result = balances.transfer_balance(&origin, &destination, u128::MAX);
+        let transfer_result = balances.transfer_balance(origin.clone(), destination.clone(), u128::MAX);
         assert!(transfer_result.is_err());
         assert_eq!(transfer_result.unwrap_err(), "Reached limit amount on origin.");
 

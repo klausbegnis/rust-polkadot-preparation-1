@@ -3,6 +3,7 @@ use crate::support::{Dispatch};
 mod balances;
 mod system;
 mod support;
+mod proof_of_existence;
 
 // define the types for each generic
 mod types {
@@ -13,11 +14,12 @@ mod types {
     pub type Extrinsic = crate::support::Extrinsic<AccountId, crate::RuntimeCall>;
     pub type Header = crate::support::Header<BlockNumber>;
     pub type Block = crate::support::Block<Header, Extrinsic>;
+    pub type Content = &'static str;
 }
 
-// not implemented yet
 pub enum RuntimeCall {
     Balances(balances::Call<Runtime>),
+    ProofOfExistence(proof_of_existence::Call<Runtime>)
 }
 
 // runtime definition
@@ -25,11 +27,16 @@ pub enum RuntimeCall {
 pub struct Runtime {
     balances : balances::Pallet<Self,>,
     system : system::Pallet<Self,>,
+    poe : proof_of_existence::Pallet<Self,>
 }
 
 impl Runtime {
     fn new() -> Self {
-        Self { balances: balances::Pallet::new(), system: system::Pallet::new() }
+        Self { 
+                balances: balances::Pallet::new(), 
+                system: system::Pallet::new(),
+                poe: proof_of_existence::Pallet::new()
+            }
     }
 
     fn execute_block(&mut self, block: types::Block) -> support::DispatchResult {
@@ -66,6 +73,9 @@ impl crate::support::Dispatch for Runtime {
         match call {
             RuntimeCall::Balances(call) => {
                 self.balances.dispatch(caller, call)?;
+            },
+            RuntimeCall::ProofOfExistence(call) => {
+                self.poe.dispatch(caller, call)?;
             }
         }
         Ok(())
@@ -82,6 +92,10 @@ impl system::Config for Runtime {
 // implement the balace config trait for Runtime
 impl balances::Config for Runtime {
 	type Balance = types::Balance;
+}
+
+impl proof_of_existence::Config for Runtime{
+    type Content = types::Content;
 }
 
 fn main() {
@@ -109,6 +123,10 @@ fn main() {
             support::Extrinsic {
                 caller: alice.clone(),
                 call : RuntimeCall::Balances(balances::Call::Transfer { to: charlie.clone(), amount: 10 })
+            },
+            support::Extrinsic {
+                caller: alice.clone(),
+                call : RuntimeCall::ProofOfExistence(proof_of_existence::Call::CreateClaim {claim : &"Test"})
             }
         ]
     };
